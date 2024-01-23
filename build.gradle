@@ -1,0 +1,64 @@
+plugins {
+    alias(libs.plugins.versions)
+    alias(libs.plugins.spotless)
+    alias(libs.plugins.nexusPublish)
+    alias(libs.plugins.axionRelease)
+    alias(libs.plugins.testLogger)
+    alias(libs.plugins.testRetry)
+
+    id 'java-library'
+    id 'groovy'
+}
+
+group = 'com.github.lburgazzoli'
+
+apply from: "${rootProject.projectDir}/gradle/style.gradle"
+apply from: "${rootProject.projectDir}/gradle/quality.gradle"
+apply from: "${rootProject.projectDir}/gradle/publishing-release.gradle"
+apply from: "${rootProject.projectDir}/gradle/publishing-release-tasks.gradle"
+apply from: "${rootProject.projectDir}/gradle/versions.gradle"
+apply from: "${rootProject.projectDir}/gradle/publish.gradle"
+apply from: "${rootProject.projectDir}/gradle/release.gradle"
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    api libs.slf4j
+
+    implementation platform("org.apache.groovy:groovy-bom:${libs.versions.groovy.get()}")
+    implementation "org.apache.groovy:groovy"
+
+    testImplementation platform("org.spockframework:spock-bom:${libs.versions.spock.get()}")
+    testImplementation "org.spockframework:spock-core"
+
+    testImplementation libs.bundles.testing
+    testImplementation libs.bundles.testingIt
+
+    testRuntimeOnly libs.bundles.log4j
+}
+
+
+compileJava {
+    options.release = 17
+}
+
+test {
+    useJUnitPlatform()
+
+    maxParallelForks = Runtime.runtime.availableProcessors() ?: 1
+
+    retry {
+        maxRetries = 1
+        maxFailures = 5
+    }
+}
+
+testlogger {
+    theme 'mocha-parallel'
+    showStandardStreams false
+}
+
+tasks.register('allDeps', DependencyReportTask)
