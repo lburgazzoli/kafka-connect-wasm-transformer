@@ -216,7 +216,7 @@ public class LibrariesForLibsInPluginsBlock extends AbstractExternalDependencyFa
             public Provider<String> getAxionReleasePlugin() { return getVersion("axionReleasePlugin"); }
 
             /**
-             * Returns the version associated to this alias: groovy (4.0.15)
+             * Returns the version associated to this alias: groovy (4.0.18)
              * If the version is a rich version and that its not expressible as a
              * single version string, then an empty string is returned.
              * This version was declared in catalog libs.versions.toml
@@ -264,7 +264,7 @@ public class LibrariesForLibsInPluginsBlock extends AbstractExternalDependencyFa
             public Provider<String> getSpock() { return getVersion("spock"); }
 
             /**
-             * Returns the version associated to this alias: spotlessPlugin (6.24.0)
+             * Returns the version associated to this alias: spotlessPlugin (6.25.0)
              * If the version is a rich version and that its not expressible as a
              * single version string, then an empty string is returned.
              * This version was declared in catalog libs.versions.toml
@@ -296,7 +296,7 @@ public class LibrariesForLibsInPluginsBlock extends AbstractExternalDependencyFa
             public Provider<String> getTestcontainers() { return getVersion("testcontainers"); }
 
             /**
-             * Returns the version associated to this alias: versionsPlugin (0.50.0)
+             * Returns the version associated to this alias: versionsPlugin (0.51.0)
              * If the version is a rich version and that its not expressible as a
              * single version string, then an empty string is returned.
              * This version was declared in catalog libs.versions.toml
