@@ -27,10 +27,13 @@ repositories {
 
 dependencies {
     api libs.slf4j
+    api libs.bundles.kafka
+    api libs.bundles.chicory
 
-    implementation platform("org.apache.groovy:groovy-bom:${libs.versions.groovy.get()}")
-    implementation "org.apache.groovy:groovy"
+    implementation libs.bundles.jackson
 
+    testImplementation platform("org.apache.groovy:groovy-bom:${libs.versions.groovy.get()}")
+    testImplementation "org.apache.groovy:groovy"
     testImplementation platform("org.spockframework:spock-bom:${libs.versions.spock.get()}")
     testImplementation "org.spockframework:spock-core"
 

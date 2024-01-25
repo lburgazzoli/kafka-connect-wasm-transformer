@@ -1,13 +1,15 @@
 [versions]
 log4j = "2.22.1"
 slf4j = "2.0.11"
-assertj = "3.25.1"
+assertj = "3.25.2"
 junit = "5.10.1"
 testcontainers = "1.19.3"
+jackson = "2.16.1"
 awaitility = "4.2.0"
 groovy = "4.0.18"
 spock = "2.3-groovy-4.0"
-
+kafka = "3.6.1"
+chicory = "0.0.6"
 versionsPlugin = "0.51.0"
 spotlessPlugin = "6.25.0"
 testLoggerPlugin = "4.0.0"
@@ -27,11 +29,21 @@ log4jApi = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j
 log4jCore = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
 log4jSlf4j = { module = "org.apache.logging.log4j:log4j-slf4j2-impl", version.ref = "log4j" }
 log4j12 = { module = "org.apache.logging.log4j:log4j-1.2-api", version.ref = "log4j" }
+kafkaConnectApi = { module = "org.apache.kafka:connect-api", version.ref = "kafka" }
+kafkaConnectTransforms = { module = "org.apache.kafka:connect-transforms", version.ref = "kafka" }
+kafkaConnectJson = { module = "org.apache.kafka:connect-json", version.ref = "kafka" }
+kafkaConnectRuntime = { module = "org.apache.kafka:connect-runtime", version.ref = "kafka" }
+chikoryRuntime = { module = "com.dylibso.chicory:runtime", version.ref = "chicory"}
+jacksonCore = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson"}
+jacksonDatabind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson"}
 
 [bundles]
 log4j     = [ "log4jApi", "log4jCore", "log4jSlf4j", "log4j12" ]
 testing   = [ "junit", "assertj", "awaitility" ]
 testingIt = [ "testcontainers", "testcontainersJunit", "testcontainersSpock" ]
+kafka     = [ "kafkaConnectApi", "kafkaConnectTransforms" , "kafkaConnectJson", "kafkaConnectRuntime"]
+chicory   = [ "chikoryRuntime" ]
+jackson   = [ "jacksonCore", "jacksonDatabind" ]
 
 [plugins]
 versions     = { id = "com.github.ben-manes.versions", version.ref = "versionsPlugin" }
