@@ -26,7 +26,7 @@ class WasmTransformerTest extends WasmTransformerTestSpec{
         when:
             def recordOut = t.apply(recordIn)
         then:
-            recordOut.value() == "THE-VALUE"
+            new String(recordOut.value()) == "THE-VALUE"
         cleanup:
             closeQuietly(t)
     }
