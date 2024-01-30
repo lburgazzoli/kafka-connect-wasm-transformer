@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 @Slf4j
 class EmbeddedKafkaConnect implements AutoCloseable {
     private Map<String,String> properties
-    private Map<String, ConnectorDefinition> connectorDefinitions
+    private Map<String, EmbeddedConnector> connectors
     private AtomicBoolean running
     private ExecutorService executor
 
@@ -30,7 +30,7 @@ class EmbeddedKafkaConnect implements AutoCloseable {
 
     EmbeddedKafkaConnect() {
         this.properties = new HashMap<>()
-        this.connectorDefinitions = new HashMap<>()
+        this.connectors = new HashMap<>()
         this.running = new AtomicBoolean(false)
         this.executor = Executors.newSingleThreadExecutor()
     }
@@ -44,7 +44,7 @@ class EmbeddedKafkaConnect implements AutoCloseable {
     }
 
     void setConnectorDefinition(String name, Class<?> type, Map<String, String> properties) {
-        this.connectorDefinitions.put(name, new ConnectorDefinition(
+        this.connectors.put(name, new EmbeddedConnector(
                 name: name,
                 type: type.name,
                 config: Map.copyOf(properties)
@@ -65,10 +65,10 @@ class EmbeddedKafkaConnect implements AutoCloseable {
     }
 
     private void doRun() {
-        log.info("Start ConnectStandalone")
+        log.info("Starting KafkaConnect")
 
         try {
-            log.info("Kafka Connect standalone worker initializing ...")
+            log.info("Worker initializing ...")
             long initStart = Time.SYSTEM.hiResClockMs()
 
             Map<String, String> workerProps = Map.copyOf(properties)
@@ -89,7 +89,7 @@ class EmbeddedKafkaConnect implements AutoCloseable {
                     ConnectorClientConfigOverridePolicy.class)
 
             Worker worker = new Worker(
-                    "standalone",
+                    "embedded",
                     Time.SYSTEM,
                     plugins,
                     config,
@@ -102,12 +102,12 @@ class EmbeddedKafkaConnect implements AutoCloseable {
                     connectorClientConfigOverridePolicy)
 
             herder = new StandaloneHerder(worker, kafkaClusterId, connectorClientConfigOverridePolicy)
-            log.info("Kafka Connect standalone worker initialization took {}ms", Time.SYSTEM.hiResClockMs() - initStart)
+            log.info("Worker initialization took {}ms", Time.SYSTEM.hiResClockMs() - initStart)
 
             try {
                 herder.start()
 
-                for (def cd : connectorDefinitions.entrySet()) {
+                for (def cd : connectors.entrySet()) {
                     var cb = new FutureCallback<>(new Callback<Herder.Created<ConnectorInfo>>() {
                         @Override
                         void onCompletion(Throwable error, Herder.Created<ConnectorInfo> info) {
@@ -144,13 +144,13 @@ class EmbeddedKafkaConnect implements AutoCloseable {
     }
 
     private void doStop() {
-        log.info("Stop ConnectStandalone")
+        log.info("Stop KafkaConnect")
         if (this.herder != null) {
             herder.stop()
         }
     }
 
-    private static class ConnectorDefinition {
+    private static class EmbeddedConnector {
         String name
         String type
         Map<String, String> config;
@@ -167,6 +167,4 @@ class EmbeddedKafkaConnect implements AutoCloseable {
             super(CONFIG, props)
         }
     }
-
-
 }
