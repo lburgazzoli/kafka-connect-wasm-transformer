@@ -40,6 +40,13 @@ pub unsafe extern "C" fn dealloc(ptr: &mut u8, len: i32) {
     let _ = Vec::from_raw_parts(ptr, 0, len as usize);
 }
 
+// *****************************************************************************
+//
+// Classic
+//
+// ******************************************************************************
+
+
 #[cfg_attr(all(target_arch = "wasm32"), export_name = "transform")]
 #[no_mangle]
 pub extern fn transform(ptr: u32, len: u32) -> u64 {
@@ -65,4 +72,48 @@ pub extern fn transform(ptr: u32, len: u32) -> u64 {
 
     return ((out_ptr as u64) << 32) | out_len as u64;
 }
+
+// *****************************************************************************
+//
+// With Host Functions
+//
+// ******************************************************************************
+
+extern "C" {
+	fn set_value(ptr: *const u8, len: i32);
+	fn get_value() -> u64;
+}
+
+pub fn do_get_value() -> Vec<u8> {
+    let ptr_and_len = unsafe {
+        get_value()
+    };
+
+    let in_ptr = (ptr_and_len >> 32) as *mut u8;
+    let in_len = (ptr_and_len as u32) as usize;
+
+    return unsafe {
+        Vec::from_raw_parts(in_ptr, in_len, in_len)
+    };
+}
+
+
+pub fn do_set_value(v: Vec<u8>) {
+     let out_len = v.len();
+     let out_ptr = v.as_ptr();
+
+     unsafe {
+        set_value(out_ptr, out_len as i32);
+     };
+}
+
+#[cfg_attr(all(target_arch = "wasm32"), export_name = "to_upper")]
+#[no_mangle]
+pub extern fn to_upper() {
+    let val = do_get_value();
+    let _res = String::from_utf8(val).unwrap().to_uppercase().as_bytes().to_vec();
+
+    //do_set_value(res);
+}
+
 

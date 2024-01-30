@@ -1,36 +1,25 @@
 package com.github.lburgazzoli.kafka.transformer.wasm;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+import com.dylibso.chicory.runtime.Module;
 import com.dylibso.chicory.runtime.exceptions.WASMMachineException;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
-import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.utils.AppInfoParser;
 import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.converters.ByteArrayConverter;
-import org.apache.kafka.connect.data.SchemaAndValue;
-import org.apache.kafka.connect.header.ConnectHeaders;
-import org.apache.kafka.connect.header.Header;
-import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.HeaderConverter;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
-
-import com.dylibso.chicory.runtime.Module;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class WasmTransformer<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
     private static final Logger LOGGER = LoggerFactory.getLogger(WasmTransformer.class);
-
-    public static final ObjectMapper MAPPER = JsonMapper.builder().build();
 
     public static final String KEY_CONVERTER = "key.converter";
     public static final String VALUE_CONVERTER = "value.converter";
@@ -67,12 +56,8 @@ public class WasmTransformer<R extends ConnectRecord<R>> implements Transformati
             ConfigDef.Importance.MEDIUM,
             "The converter used to serialize/deserialize the Connect Record Header to/from binary data.");
 
-    private Converter keyConverter;
-    private Converter valueConverter;
-    private HeaderConverter headerConverter;
-
     private Module module;
-    private WasmFunction function;
+    private WasmFunction<R> function;
 
     public WasmTransformer() {
     }
@@ -91,10 +76,15 @@ public class WasmTransformer<R extends ConnectRecord<R>> implements Transformati
     public void configure(Map<String, ?> props) {
         final SimpleConfig config = new SimpleConfig(CONFIG_DEF, props);
 
+        final Converter keyConverter;
+        final Converter valueConverter;
+        final HeaderConverter headerConverter;
+
+
         try {
-            this.keyConverter = (Converter) config.getClass(KEY_CONVERTER).getDeclaredConstructor().newInstance();
-            this.valueConverter = (Converter) config.getClass(VALUE_CONVERTER).getDeclaredConstructor().newInstance();
-            this.headerConverter = (HeaderConverter) config.getClass(HEADER_CONVERTER).getDeclaredConstructor().newInstance();
+            keyConverter = (Converter) config.getClass(KEY_CONVERTER).getDeclaredConstructor().newInstance();
+            valueConverter = (Converter) config.getClass(VALUE_CONVERTER).getDeclaredConstructor().newInstance();
+            headerConverter = (HeaderConverter) config.getClass(HEADER_CONVERTER).getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw new ConfigException("TODO");
         }
@@ -110,19 +100,13 @@ public class WasmTransformer<R extends ConnectRecord<R>> implements Transformati
         }
 
         this.module = Module.builder(new File(modulePath)).build();
-        this.function = new WasmFunction(this.module, functionName);
+        this.function = new WasmFunction<>(this.module, functionName, keyConverter, valueConverter, headerConverter);
     }
 
     @Override
     public R apply(R record) {
         try {
-            byte[] in = serialize(record);
-            LOGGER.debug("in {}", new String(in, StandardCharsets.UTF_8));
-
-            byte[] result = this.function.run(in);
-            LOGGER.debug("result {}", new String(result, StandardCharsets.UTF_8));
-
-            return deserialize(record, result);
+            return this.function.apply(record);
         } catch (WASMMachineException e) {
             LOGGER.warn("message: {}, stack {}", e.getMessage(), e.stackFrames());
             throw new RuntimeException(e);
@@ -143,59 +127,5 @@ public class WasmTransformer<R extends ConnectRecord<R>> implements Transformati
             this.function = null;
             this.module = null;
         }
-    }
-
-    private byte[] serialize(R record) throws Exception {
-        // May not be needed but looks like the record headers may be required
-        // by key/val converters
-        RecordHeaders recordHeaders = new RecordHeaders();
-        if (record.headers() != null) {
-            String topic = record.topic();
-            for (Header header : record.headers()) {
-                String key = header.key();
-                byte[] rawHeader = this.headerConverter.fromConnectHeader(topic, key, header.schema(), header.value());
-                recordHeaders.add(key, rawHeader);
-            }
-        }
-
-        WasmRecord env = new WasmRecord();
-        env.topic = record.topic();
-        env.key = keyConverter.fromConnectData(record.topic(), recordHeaders, record.keySchema(), record.key());
-        env.value = valueConverter.fromConnectData(record.topic(), recordHeaders, record.valueSchema(), record.value());
-
-        recordHeaders.forEach(h -> {
-            env.headers.put(h.key(), h.value());
-        });
-
-        return MAPPER.writeValueAsBytes(env);
-    }
-
-    private R deserialize(R record, byte[] in) throws Exception {
-
-        WasmRecord w = MAPPER.readValue(in, WasmRecord.class);
-
-        RecordHeaders recordHeaders = new RecordHeaders();
-        Headers connectHeaders = new ConnectHeaders();
-
-        // May not be needed but looks like the record headers may be required
-        // by key/val converters so let's do it even if I don't think the way
-        // I'm doing it is 100% correct :)
-        w.headers.forEach((k, v) -> {
-            recordHeaders.add(k, v);
-            connectHeaders.add(k, headerConverter.toConnectHeader(w.topic, k, v));
-        });
-
-        SchemaAndValue keyAndSchema = keyConverter.toConnectData(w.topic, recordHeaders, w.key);
-        SchemaAndValue valueAndSchema = valueConverter.toConnectData(w.topic, recordHeaders, w.value);
-
-        return record.newRecord(
-            w.topic,
-            record.kafkaPartition(),
-            keyAndSchema.schema(),
-            keyAndSchema.value(),
-            valueAndSchema.schema(),
-            valueAndSchema.value(),
-            record.timestamp(),
-            connectHeaders);
     }
 }

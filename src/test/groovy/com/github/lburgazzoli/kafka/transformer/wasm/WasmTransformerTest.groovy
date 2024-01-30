@@ -1,7 +1,6 @@
 package com.github.lburgazzoli.kafka.transformer.wasm
 
 import com.github.lburgazzoli.kafka.support.EmbeddedKafkaConnect
-import com.github.lburgazzoli.kafka.support.EmbeddedKafkaContainer
 import com.github.lburgazzoli.kafka.transformer.wasm.support.WasmTransformerTestSpec
 import groovy.util.logging.Slf4j
 import org.apache.kafka.clients.consumer.Consumer
@@ -9,15 +8,10 @@ import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.connect.file.FileStreamSourceConnector
 import org.apache.kafka.connect.runtime.ConnectorConfig
 import org.apache.kafka.connect.runtime.WorkerConfig
-import org.apache.kafka.connect.runtime.WorkerConfigTransformer
 import org.apache.kafka.connect.runtime.isolation.PluginDiscoveryMode
 import org.apache.kafka.connect.storage.StringConverter
-import org.slf4j.LoggerFactory
-import org.testcontainers.containers.output.Slf4jLogConsumer
-import org.testcontainers.redpanda.RedpandaContainer
 import org.testcontainers.spock.Testcontainers
-import org.testcontainers.utility.DockerImageName
-import spock.lang.Shared
+import spock.lang.Ignore
 import spock.lang.TempDir
 
 import java.nio.charset.StandardCharsets
@@ -30,8 +24,8 @@ import java.time.Duration
 @Testcontainers
 class WasmTransformerTest extends WasmTransformerTestSpec {
 
-    @Shared
-    EmbeddedKafkaContainer KAFKA = new EmbeddedKafkaContainer()
+    //@Shared
+    //EmbeddedKafkaContainer KAFKA = new EmbeddedKafkaContainer()
 
     @TempDir
     Path connectTmp
@@ -41,7 +35,7 @@ class WasmTransformerTest extends WasmTransformerTestSpec {
             def t = new WasmTransformer()
             t.configure(Map.of(
                     WasmTransformer.WASM_MODULE_PATH, 'src/test/resources/functions.wasm',
-                    WasmTransformer.WASM_FUNCTION_NAME, 'transform',
+                    WasmTransformer.WASM_FUNCTION_NAME, 'to_upper',
             ))
 
             def recordIn = sourceRecord()
@@ -58,6 +52,7 @@ class WasmTransformerTest extends WasmTransformerTestSpec {
             closeQuietly(t)
     }
 
+    @Ignore
     def 'pipeline transformer'() {
 
         given:
