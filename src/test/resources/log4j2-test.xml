@@ -6,6 +6,37 @@
         </Console>
     </Appenders>
     <Loggers>
+        <logger name="kafka.container" level="WARN">
+            <AppenderRef ref="console"/>
+        </logger>
+
+        <logger name="org.apache.kafka.common" level="WARN" additivity="false">
+            <AppenderRef ref="console"/>
+        </logger>
+        <logger name="org.apache.kafka.clients" level="WARN" additivity="false">
+            <AppenderRef ref="console"/>
+        </logger>
+        <logger name="org.apache.kafka.clients.producer.ProducerConfig" level="WARN" additivity="false">
+            <AppenderRef ref="console"/>
+        </logger>
+        <logger name="org.apache.kafka.clients.consumer.ConsumerConfig" level="WARN"  additivity="false">
+            <AppenderRef ref="console"/>
+        </logger>
+
+        <logger name="org.apache.kafka.connect" level="INFO" additivity="false">
+            <AppenderRef ref="console"/>
+        </logger>
+        <logger name="org.apache.kafka.connect.runtime.isolation" level="WARN" additivity="false">
+            <AppenderRef ref="console"/>
+        </logger>
+        <logger name="org.apache.kafka.connect.file" level="TRACE" additivity="false">
+            <AppenderRef ref="console"/>
+        </logger>
+
+        <logger name="com.github.lburgazzoli.kafka.transformer.wasm" level="DEBUG" additivity="false">
+            <AppenderRef ref="console"/>
+        </logger>
+
         <Root level="INFO">
             <AppenderRef ref="console" />
         </Root>

@@ -1,10 +1,16 @@
 package com.github.lburgazzoli.kafka.transformer.wasm.support
 
-
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerConfig
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
+import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.connect.data.Schema
 import org.apache.kafka.connect.header.ConnectHeaders
 import org.apache.kafka.connect.header.Header
 import org.apache.kafka.connect.source.SourceRecord
+import org.testcontainers.redpanda.RedpandaContainer
 import spock.lang.Specification
 
 class WasmTransformerTestSpec extends Specification {
@@ -99,6 +105,25 @@ class WasmTransformerTestSpec extends Specification {
                     this.timestamp ?= 0,
                     this.headers ?= new ConnectHeaders())
         }
+    }
+
+
+    static KafkaProducer<byte[], byte[]> producer(RedpandaContainer container) {
+        return new KafkaProducer<>(Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, container.bootstrapServers,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.name,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.name,
+        ))
+    }
+
+    static KafkaConsumer<byte[], byte[]> consumer(RedpandaContainer container) {
+        return new KafkaConsumer<>(Map.of(
+                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, container.bootstrapServers,
+                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.name,
+                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.name,
+                ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID().toString(),
+                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"
+        ))
     }
 
 }

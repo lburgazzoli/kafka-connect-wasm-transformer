@@ -34,6 +34,7 @@ kafkaConnectApi = { module = "org.apache.kafka:connect-api", version.ref = "kafk
 kafkaConnectTransforms = { module = "org.apache.kafka:connect-transforms", version.ref = "kafka" }
 kafkaConnectJson = { module = "org.apache.kafka:connect-json", version.ref = "kafka" }
 kafkaConnectRuntime = { module = "org.apache.kafka:connect-runtime", version.ref = "kafka" }
+kafkaConnectFile = { module = "org.apache.kafka:connect-file", version.ref = "kafka" }
 kafkaClient = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
 chikoryRuntime = { module = "com.dylibso.chicory:runtime", version.ref = "chicory"}
 jacksonCore = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson"}
@@ -43,7 +44,7 @@ jacksonDatabind = { module = "com.fasterxml.jackson.core:jackson-databind", vers
 log4j        = [ "log4jApi", "log4jCore", "log4jSlf4j", "log4j12" ]
 testing      = [ "junit", "assertj", "awaitility" ]
 testingIt    = [ "testcontainers", "testcontainersJunit", "testcontainersSpock", "testcontainersRedpanda" ]
-testingKafka = [ "kafkaClient" ]
+testingKafka = [ "kafkaClient", "kafkaConnectFile" ]
 kafka        = [ "kafkaConnectApi", "kafkaConnectTransforms" , "kafkaConnectJson", "kafkaConnectRuntime"]
 chicory      = [ "chikoryRuntime" ]
 jackson      = [ "jacksonCore", "jacksonDatabind" ]

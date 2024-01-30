@@ -55,7 +55,7 @@ test {
     maxParallelForks = Runtime.runtime.availableProcessors() ?: 1
 
     retry {
-        maxRetries = 1
+        maxRetries = 0
         maxFailures = 5
     }
 }

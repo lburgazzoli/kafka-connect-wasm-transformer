@@ -1,6 +1,7 @@
 package com.github.lburgazzoli.kafka.transformer.wasm;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -22,17 +23,19 @@ import org.apache.kafka.connect.transforms.util.SimpleConfig;
 import com.dylibso.chicory.runtime.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WasmTransformer<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
-    public static final ObjectMapper MAPPER = JsonMapper.builder().build();
+    private static final Logger LOGGER = LoggerFactory.getLogger(WasmTransformer.class);
 
-    public static final String OVERVIEW_DOC = "Apply a wasm function to a Kafka Connect Record.";
+    public static final ObjectMapper MAPPER = JsonMapper.builder().build();
 
     public static final String KEY_CONVERTER = "key.converter";
     public static final String VALUE_CONVERTER = "value.converter";
     public static final String HEADER_CONVERTER = "header.converter";
-    public static final String WASM_MODULE_PATH = "wasm.module.path";
-    public static final String WASM_FUNCTION_NAME = "wasm.function.name";
+    public static final String WASM_MODULE_PATH = "module.path";
+    public static final String WASM_FUNCTION_NAME = "function.name";
 
     public static final ConfigDef CONFIG_DEF = new ConfigDef()
         .define(WASM_MODULE_PATH,
@@ -113,10 +116,12 @@ public class WasmTransformer<R extends ConnectRecord<R>> implements Transformati
     public R apply(R record) {
         try {
             byte[] in = serialize(record);
-            byte[] result = this.function.run(in);
-            R out = deserialize(record, result);
+            LOGGER.debug("in {}", new String(in, StandardCharsets.UTF_8));
 
-            return out;
+            byte[] result = this.function.run(in);
+            LOGGER.debug("result {}", new String(result, StandardCharsets.UTF_8));
+
+            return deserialize(record, result);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
