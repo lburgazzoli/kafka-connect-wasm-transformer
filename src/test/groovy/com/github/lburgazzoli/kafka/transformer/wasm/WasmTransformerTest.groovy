@@ -1,6 +1,6 @@
 package com.github.lburgazzoli.kafka.transformer.wasm
 
-import com.github.lburgazzoli.kafka.transformer.wasm.support.EmbeddedKafkaConnect
+import com.github.lburgazzoli.kafka.support.EmbeddedKafkaConnect
 import com.github.lburgazzoli.kafka.transformer.wasm.support.WasmTransformerTestSpec
 import groovy.util.logging.Slf4j
 import org.apache.kafka.clients.consumer.Consumer
@@ -80,6 +80,7 @@ class WasmTransformerTest extends WasmTransformerTestSpec {
         then:
             def records = consumer.poll(Duration.ofSeconds(5))
             records.size() == 1
+            records.iterator().next().value() == 'THE-VALUE'.getBytes(StandardCharsets.UTF_8)
 
         cleanup:
             closeQuietly(producer)
@@ -87,7 +88,6 @@ class WasmTransformerTest extends WasmTransformerTestSpec {
             closeQuietly(kc)
     }
 
-    @Ignore
     def 'direct transformer'() {
         given:
             def t = new WasmTransformer()
@@ -105,8 +105,8 @@ class WasmTransformerTest extends WasmTransformerTestSpec {
         when:
             def recordOut = t.apply(recordIn)
         then:
-            recordOut.value() == "THE-VALUE".getBytes(StandardCharsets.UTF_8)
+            recordOut.value() == 'THE-VALUE'.getBytes(StandardCharsets.UTF_8)
         cleanup:
-         closeQuietly(t)
+            closeQuietly(t)
     }
 }

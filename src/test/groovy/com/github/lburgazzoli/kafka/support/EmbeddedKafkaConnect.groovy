@@ -1,4 +1,4 @@
-package com.github.lburgazzoli.kafka.transformer.wasm.support
+package com.github.lburgazzoli.kafka.support
 
 import groovy.util.logging.Slf4j
 import org.apache.kafka.common.utils.Time
