@@ -13,6 +13,7 @@ struct Message {
 
     topic: String,
 
+    #[serde(default)]
     #[serde(with = "Base64Standard")]
     key: Vec<u8>,
 

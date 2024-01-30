@@ -4,19 +4,14 @@ import groovy.util.logging.Slf4j
 import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.connect.connector.policy.ConnectorClientConfigOverridePolicy
-import org.apache.kafka.connect.json.JsonConverter
-import org.apache.kafka.connect.json.JsonConverterConfig
 import org.apache.kafka.connect.runtime.ConnectorConfig
 import org.apache.kafka.connect.runtime.Herder
 import org.apache.kafka.connect.runtime.Worker
 import org.apache.kafka.connect.runtime.WorkerConfig
 import org.apache.kafka.connect.runtime.isolation.Plugins
 import org.apache.kafka.connect.runtime.rest.entities.ConnectorInfo
-import org.apache.kafka.connect.runtime.standalone.StandaloneConfig
 import org.apache.kafka.connect.runtime.standalone.StandaloneHerder
-import org.apache.kafka.connect.storage.FileOffsetBackingStore
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore
-import org.apache.kafka.connect.storage.OffsetBackingStore
 import org.apache.kafka.connect.util.Callback
 import org.apache.kafka.connect.util.FutureCallback
 

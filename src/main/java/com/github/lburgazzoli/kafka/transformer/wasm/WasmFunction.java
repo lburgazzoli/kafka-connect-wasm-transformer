@@ -42,7 +42,7 @@ public class WasmFunction implements AutoCloseable {
         int outSize = 0;
 
         //
-        // Wasm execution is not thread safe so we must put a
+        // Wasm execution is not thread safe, so we must put a
         // synchronization guard around the function execution
         //
         synchronized (lock) {
@@ -66,8 +66,6 @@ public class WasmFunction implements AutoCloseable {
                 }
 
                 return instance.memory().readBytes(outPtr, outSize);
-            } catch (Exception e) {
-                throw e;
             } finally {
                 if (inPtr != -1) {
                     dealloc.apply(Value.i32(inPtr), Value.i32(inSize));

@@ -29,7 +29,7 @@
         <logger name="org.apache.kafka.connect.runtime.isolation" level="WARN" additivity="false">
             <AppenderRef ref="console"/>
         </logger>
-        <logger name="org.apache.kafka.connect.file" level="TRACE" additivity="false">
+        <logger name="org.apache.kafka.connect.file" level="INFO" additivity="false">
             <AppenderRef ref="console"/>
         </logger>
 

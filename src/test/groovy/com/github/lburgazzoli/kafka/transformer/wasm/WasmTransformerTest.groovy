@@ -44,15 +44,15 @@ class WasmTransformerTest extends WasmTransformerTestSpec {
         given:
             def inFile = connectTmp.resolve('in.txt')
             def topic = UUID.randomUUID().toString()
-            def content = 'hello'
+            def content = 'the-value'
 
             Producer<byte[], byte[]> producer = producer(KAFKA)
             Consumer<byte[], byte[]> consumer = consumer(KAFKA)
 
             def kc = new EmbeddedKafkaConnect()
             kc.setProperty(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.bootstrapServers)
-            kc.setProperty(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, ByteArrayConverter.class.name)
-            kc.setProperty(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, ByteArrayConverter.class.name)
+            kc.setProperty(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, StringConverter.class.name)
+            kc.setProperty(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, StringConverter.class.name)
             kc.setProperty(WorkerConfig.PLUGIN_DISCOVERY_CONFIG, PluginDiscoveryMode.SERVICE_LOAD.name())
 
             kc.setConnectorDefinition('file-source', FileStreamSourceConnector.class, Map.of(
