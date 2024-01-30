@@ -6,9 +6,9 @@ import groovy.util.logging.Slf4j
 import java.nio.charset.StandardCharsets
 
 @Slf4j
-class WasmTransformerTest extends WasmTransformerTestSpec{
+class WasmTransformerTest extends WasmTransformerTestSpec {
 
-    def 'simple test'() {
+    def 'simple function'() {
         given:
             def t = new WasmTransformer()
             t.configure(Map.of(

@@ -39,6 +39,7 @@ dependencies {
 
     testImplementation libs.bundles.testing
     testImplementation libs.bundles.testingIt
+    testImplementation libs.bundles.testingKafka
 
     testRuntimeOnly libs.bundles.log4j
 }
@@ -61,7 +62,7 @@ test {
 
 testlogger {
     theme 'mocha-parallel'
-    showStandardStreams false
+    showStandardStreams true
 }
 
 tasks.register('allDeps', DependencyReportTask)

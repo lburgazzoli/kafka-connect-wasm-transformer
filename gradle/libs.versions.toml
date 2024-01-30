@@ -3,7 +3,7 @@ log4j = "2.22.1"
 slf4j = "2.0.11"
 assertj = "3.25.2"
 junit = "5.10.1"
-testcontainers = "1.19.3"
+testcontainers = "1.19.4"
 jackson = "2.16.1"
 awaitility = "4.2.0"
 groovy = "4.0.18"
@@ -23,6 +23,7 @@ assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 junit = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
 testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
 testcontainersJunit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+testcontainersRedpanda = { module = "org.testcontainers:redpanda", version.ref = "testcontainers" }
 testcontainersSpock = { module = "org.testcontainers:spock", version.ref = "testcontainers" }
 awaitility = { module = "org.awaitility:awaitility", version.ref = "awaitility" }
 log4jApi = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
@@ -33,17 +34,19 @@ kafkaConnectApi = { module = "org.apache.kafka:connect-api", version.ref = "kafk
 kafkaConnectTransforms = { module = "org.apache.kafka:connect-transforms", version.ref = "kafka" }
 kafkaConnectJson = { module = "org.apache.kafka:connect-json", version.ref = "kafka" }
 kafkaConnectRuntime = { module = "org.apache.kafka:connect-runtime", version.ref = "kafka" }
+kafkaClient = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
 chikoryRuntime = { module = "com.dylibso.chicory:runtime", version.ref = "chicory"}
 jacksonCore = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson"}
 jacksonDatabind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson"}
 
 [bundles]
-log4j     = [ "log4jApi", "log4jCore", "log4jSlf4j", "log4j12" ]
-testing   = [ "junit", "assertj", "awaitility" ]
-testingIt = [ "testcontainers", "testcontainersJunit", "testcontainersSpock" ]
-kafka     = [ "kafkaConnectApi", "kafkaConnectTransforms" , "kafkaConnectJson", "kafkaConnectRuntime"]
-chicory   = [ "chikoryRuntime" ]
-jackson   = [ "jacksonCore", "jacksonDatabind" ]
+log4j        = [ "log4jApi", "log4jCore", "log4jSlf4j", "log4j12" ]
+testing      = [ "junit", "assertj", "awaitility" ]
+testingIt    = [ "testcontainers", "testcontainersJunit", "testcontainersSpock", "testcontainersRedpanda" ]
+testingKafka = [ "kafkaClient" ]
+kafka        = [ "kafkaConnectApi", "kafkaConnectTransforms" , "kafkaConnectJson", "kafkaConnectRuntime"]
+chicory      = [ "chikoryRuntime" ]
+jackson      = [ "jacksonCore", "jacksonDatabind" ]
 
 [plugins]
 versions     = { id = "com.github.ben-manes.versions", version.ref = "versionsPlugin" }
