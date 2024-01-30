@@ -107,23 +107,4 @@ class WasmTransformerTestSpec extends Specification {
         }
     }
 
-
-    static KafkaProducer<byte[], byte[]> producer(RedpandaContainer container) {
-        return new KafkaProducer<>(Map.of(
-                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, container.bootstrapServers,
-                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.name,
-                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.name,
-        ))
-    }
-
-    static KafkaConsumer<byte[], byte[]> consumer(RedpandaContainer container) {
-        return new KafkaConsumer<>(Map.of(
-                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, container.bootstrapServers,
-                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.name,
-                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.name,
-                ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID().toString(),
-                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"
-        ))
-    }
-
 }

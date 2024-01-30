@@ -6,9 +6,6 @@
         </Console>
     </Appenders>
     <Loggers>
-        <logger name="kafka.container" level="WARN">
-            <AppenderRef ref="console"/>
-        </logger>
 
         <logger name="org.apache.kafka.common" level="WARN" additivity="false">
             <AppenderRef ref="console"/>
@@ -33,6 +30,12 @@
             <AppenderRef ref="console"/>
         </logger>
 
+        <logger name="com.github.lburgazzoli.kafka.support" level="WARN" additivity="false">
+            <AppenderRef ref="console"/>
+        </logger>
+        <logger name="com.github.lburgazzoli.kafka.support.EmbeddedKafkaContainer" level="WARN" additivity="false">
+            <AppenderRef ref="console"/>
+        </logger>
         <logger name="com.github.lburgazzoli.kafka.transformer.wasm" level="DEBUG" additivity="false">
             <AppenderRef ref="console"/>
         </logger>

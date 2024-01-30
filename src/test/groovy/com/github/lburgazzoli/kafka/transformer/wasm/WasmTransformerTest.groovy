@@ -1,6 +1,7 @@
 package com.github.lburgazzoli.kafka.transformer.wasm
 
 import com.github.lburgazzoli.kafka.support.EmbeddedKafkaConnect
+import com.github.lburgazzoli.kafka.support.EmbeddedKafkaContainer
 import com.github.lburgazzoli.kafka.transformer.wasm.support.WasmTransformerTestSpec
 import groovy.util.logging.Slf4j
 import org.apache.kafka.clients.consumer.Consumer
@@ -28,12 +29,9 @@ import java.time.Duration
 @Slf4j
 @Testcontainers
 class WasmTransformerTest extends WasmTransformerTestSpec {
-    static final String IMAGE_NAME = "docker.redpanda.com/redpandadata/redpanda:v23.1.2"
-    static final DockerImageName IMAGE = DockerImageName.parse(IMAGE_NAME)
 
     @Shared
-    RedpandaContainer KAFKA = new RedpandaContainer(IMAGE)
-            .withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger("kafka.container")))
+    EmbeddedKafkaContainer KAFKA = new EmbeddedKafkaContainer()
 
     @TempDir
     Path connectTmp
@@ -67,8 +65,8 @@ class WasmTransformerTest extends WasmTransformerTestSpec {
             def topic = UUID.randomUUID().toString()
             def content = 'the-value'
 
-            Producer<byte[], byte[]> producer = producer(KAFKA)
-            Consumer<byte[], byte[]> consumer = consumer(KAFKA)
+            Producer<byte[], byte[]> producer = KAFKA.producer()
+            Consumer<byte[], byte[]> consumer = KAFKA.consumer()
 
             def kc = new EmbeddedKafkaConnect()
             kc.setProperty(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.bootstrapServers)
