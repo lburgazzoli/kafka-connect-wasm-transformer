@@ -54,7 +54,6 @@ class WasmTransformerTest extends WasmTransformerTestSpec {
             kc.setProperty(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, ByteArrayConverter.class.name)
             kc.setProperty(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, ByteArrayConverter.class.name)
             kc.setProperty(WorkerConfig.PLUGIN_DISCOVERY_CONFIG, PluginDiscoveryMode.SERVICE_LOAD.name())
-            kc.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, connectTmp.resolve('offset.txt').toString())
 
             kc.setConnectorDefinition('file-source', FileStreamSourceConnector.class, Map.of(
                 FileStreamSourceConnector.FILE_CONFIG, inFile.toString(),

@@ -1,6 +1,7 @@
 package com.github.lburgazzoli.kafka.support
 
 import groovy.util.logging.Slf4j
+import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.connect.connector.policy.ConnectorClientConfigOverridePolicy
 import org.apache.kafka.connect.json.JsonConverter
@@ -14,6 +15,7 @@ import org.apache.kafka.connect.runtime.rest.entities.ConnectorInfo
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig
 import org.apache.kafka.connect.runtime.standalone.StandaloneHerder
 import org.apache.kafka.connect.storage.FileOffsetBackingStore
+import org.apache.kafka.connect.storage.MemoryOffsetBackingStore
 import org.apache.kafka.connect.storage.OffsetBackingStore
 import org.apache.kafka.connect.util.Callback
 import org.apache.kafka.connect.util.FutureCallback
@@ -81,7 +83,7 @@ class EmbeddedKafkaConnect implements AutoCloseable {
             Plugins plugins = new Plugins(workerProps)
             plugins.compareAndSwapWithDelegatingLoader()
 
-            StandaloneConfig config = new StandaloneConfig(workerProps)
+            WorkerConfig config = new EmbeddedConfig(workerProps)
 
             String kafkaClusterId = config.kafkaClusterId()
             log.debug("Kafka cluster ID: {}", kafkaClusterId)
@@ -91,21 +93,17 @@ class EmbeddedKafkaConnect implements AutoCloseable {
                     config,
                     ConnectorClientConfigOverridePolicy.class)
 
-
-            OffsetBackingStore obs = new FileOffsetBackingStore(
-                    plugins.newInternalConverter(
-                            true,
-                            JsonConverter.class.getName(),
-                            Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false")))
-
-            obs.configure(config)
-
             Worker worker = new Worker(
                     "standalone",
                     Time.SYSTEM,
                     plugins,
                     config,
-                    obs,
+                    new MemoryOffsetBackingStore() {
+                        @Override
+                        Set<Map<String, Object>> connectorPartitions(String connectorName) {
+                            return Collections.emptySet()
+                        }
+                    },
                     connectorClientConfigOverridePolicy)
 
             herder = new StandaloneHerder(worker, kafkaClusterId, connectorClientConfigOverridePolicy)
@@ -162,5 +160,18 @@ class EmbeddedKafkaConnect implements AutoCloseable {
         String type
         Map<String, String> config;
     }
+
+    private static class EmbeddedConfig extends WorkerConfig {
+        private static final ConfigDef CONFIG
+
+        static {
+            CONFIG = baseConfigDef()
+        }
+
+        EmbeddedConfig(Map<String, String> props) {
+            super(CONFIG, props)
+        }
+    }
+
 
 }
