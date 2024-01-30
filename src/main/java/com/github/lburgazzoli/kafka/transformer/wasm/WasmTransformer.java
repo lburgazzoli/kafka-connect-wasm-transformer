@@ -4,6 +4,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+import com.dylibso.chicory.runtime.exceptions.WASMMachineException;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -122,6 +123,9 @@ public class WasmTransformer<R extends ConnectRecord<R>> implements Transformati
             LOGGER.debug("result {}", new String(result, StandardCharsets.UTF_8));
 
             return deserialize(record, result);
+        } catch (WASMMachineException e) {
+            LOGGER.warn("message: {}, stack {}", e.getMessage(), e.stackFrames());
+            throw new RuntimeException(e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
