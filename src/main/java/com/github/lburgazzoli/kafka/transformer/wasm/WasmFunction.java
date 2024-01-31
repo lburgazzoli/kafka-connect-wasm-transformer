@@ -35,15 +35,11 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     public static final String FN_ALLOC = "alloc";
     public static final String FN_DEALLOC = "dealloc";
 
-    private final Object lock;
-
     private final Module module;
     private final String functionName;
 
 
-    private final Converter keyConverter;
-    private final Converter valueConverter;
-    private final HeaderConverter headerConverter;
+    private final WasmRecordConverter<R> recordConverter;
 
 
     private final Instance instance;
@@ -60,15 +56,9 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         Converter valueConverter,
         HeaderConverter headerConverter) {
 
-        this.keyConverter = keyConverter;
-        this.valueConverter = valueConverter;
-        this.headerConverter = headerConverter;
-
-        this.lock = new Object();
-
+        this.recordConverter = new WasmRecordConverter<>(keyConverter, valueConverter, headerConverter);
         this.module = Objects.requireNonNull(module);
         this.functionName = Objects.requireNonNull(functionName);
-
 
         List<HostFunction> localFunctions = List.of(
             new HostFunction(
@@ -152,37 +142,34 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     @Override
     public R apply(R record) {
         try {
+            // the transformation pipeline is executed by a single thread, so it is safe to invoke
+            // the Wasm function without any lock, however we use a ThreadLocal variable to store
+            // the record being processed just as a simple way to pass it to the various functions
             TL.set(record);
 
-            //
-            // Wasm execution is not thread safe, so we must put a
-            // synchronization guard around the function execution
-            //
-            synchronized (lock) {
-                Value[] results = function.apply();
+            Value[] results = function.apply();
 
-                if (results != null) {
-                    int outAddr = -1;
-                    int outSize = 0;
+            if (results != null) {
+                int outAddr = -1;
+                int outSize = 0;
 
-                    try {
-                        long ptrAndSize = results[0].asLong();
+                try {
+                    long ptrAndSize = results[0].asLong();
 
-                        outAddr = (int) (ptrAndSize >> 32);
-                        outSize = (int) ptrAndSize;
+                    outAddr = (int) (ptrAndSize >> 32);
+                    outSize = (int) ptrAndSize;
 
-                        // assume the max output is 31 bit, leverage the first bit for
-                        // error detection
-                        if (isError(outSize)) {
-                            int errSize = errSize(outSize);
-                            String errData = instance.memory().readString(outAddr, errSize);
+                    // assume the max output is 31 bit, leverage the first bit for
+                    // error detection
+                    if (isError(outSize)) {
+                        int errSize = errSize(outSize);
+                        String errData = instance.memory().readString(outAddr, errSize);
 
-                            throw new WasmFunctionException(this.functionName, errData);
-                        }
-                    } finally {
-                        if (outAddr != -1) {
-                            dealloc.apply(Value.i32(outAddr), Value.i32(outSize));
-                        }
+                        throw new WasmFunctionException(this.functionName, errData);
+                    }
+                } finally {
+                    if (outAddr != -1) {
+                        dealloc.apply(Value.i32(outAddr), Value.i32(outSize));
                     }
                 }
             }
@@ -208,22 +195,6 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
 
     private static int errSize(int number) {
         return number & (~(1 << 31));
-    }
-
-    private SchemaAndValue toConnectData(R record, Converter converter, byte[] data) {
-        final RecordHeaders recordHeaders = new RecordHeaders();
-
-        if (record.headers() != null) {
-            // May not be needed but looks like the record headers may be required
-            // by key/val converters
-            for (Header header : record.headers()) {
-                recordHeaders.add(
-                    header.key(),
-                    this.headerConverter.fromConnectHeader(record.topic(), header.key(), header.schema(), header.value()));
-            }
-        }
-
-        return converter.toConnectData(record.topic(), recordHeaders, data);
     }
 
     /**
@@ -258,11 +229,10 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     private Value[] getHeaderFn(Instance instance, Value... args) {
         final int addr = args[0].asInt();
         final int size = args[1].asInt();
-        final String headerNwe = instance.memory().readString(addr, size);
-        final R record = TL.get();
-        final Header header = TL.get().headers().lastWithName(headerNwe);
 
-        byte[] rawData = this.headerConverter.fromConnectHeader(record.topic(), header.key(), header.schema(), header.value());
+        final String headerName = instance.memory().readString(addr, size);
+        final R record = TL.get();
+        final byte[] rawData = recordConverter.fromConnectHeader(record,headerName);
 
         return new Value[]{
             write(rawData)
@@ -279,7 +249,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         final byte[] headerData = instance.memory().readBytes(headerDataAddr, headerDataSize);
 
         final R record = TL.get();
-        final SchemaAndValue sv = this.headerConverter.toConnectHeader(record.topic(), headerName, headerData);
+        final SchemaAndValue sv = recordConverter.toConnectHeader(record, headerName, headerData);
 
         record.headers().add(headerName, sv);
 
@@ -292,20 +262,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
 
     private Value[] getKeyFn(Instance instance, Value... args) {
         final R record = TL.get();
-        final String topic = record.topic();
-        final RecordHeaders recordHeaders = new RecordHeaders();
-
-        if (record.headers() != null) {
-            // May not be needed but looks like the record headers may be required
-            // by key/val converters
-            for (Header header : record.headers()) {
-                recordHeaders.add(
-                    header.key(),
-                    this.headerConverter.fromConnectHeader(topic, header.key(), header.schema(), header.value()));
-            }
-        }
-
-        byte[] rawData = keyConverter.fromConnectData(topic, recordHeaders, record.keySchema(), record.key());
+        final byte[] rawData = recordConverter.fromConnectKey(record);
 
         return new Value[] {
             write(rawData)
@@ -316,7 +273,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         final int addr = args[0].asInt();
         final int size = args[1].asInt();
         final R record = TL.get();
-        final SchemaAndValue sv = toConnectData(record, this.keyConverter, instance.memory().readBytes(addr, size));
+        final SchemaAndValue sv = recordConverter.toConnectKey(record, instance.memory().readBytes(addr, size));
 
         TL.set(
             record.newRecord(
@@ -340,20 +297,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
 
     private Value[] getValueFn(Instance instance, Value... args) {
         final R record = TL.get();
-        final String topic = record.topic();
-        final RecordHeaders recordHeaders = new RecordHeaders();
-
-        if (record.headers() != null) {
-            // May not be needed but looks like the record headers may be required
-            // by key/val converters
-            for (Header header : record.headers()) {
-                recordHeaders.add(
-                    header.key(),
-                    this.headerConverter.fromConnectHeader(topic, header.key(), header.schema(), header.value()));
-            }
-        }
-
-        byte[] rawData = valueConverter.fromConnectData(topic, recordHeaders, record.valueSchema(), record.value());
+        final byte[] rawData = recordConverter.fromConnectValue(record);
 
         return new Value[] {
             write(rawData)
@@ -364,7 +308,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         final int addr = args[0].asInt();
         final int size = args[1].asInt();
         final R record = TL.get();
-        final SchemaAndValue sv = toConnectData(record, this.valueConverter, instance.memory().readBytes(addr, size));
+        final SchemaAndValue sv = recordConverter.toConnectValue(record, instance.memory().readBytes(addr, size));
 
         TL.set(
             record.newRecord(
@@ -423,26 +367,18 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     private Value[] getRecordFn(Instance instance, Value... args) {
         final R record = TL.get();
 
-        // May not be needed but looks like the record headers may be required
-        // by key/val converters
-        RecordHeaders recordHeaders = new RecordHeaders();
-        if (record.headers() != null) {
-            String topic = record.topic();
-            for (Header header : record.headers()) {
-                String key = header.key();
-                byte[] rawHeader = this.headerConverter.fromConnectHeader(topic, key, header.schema(), header.value());
-                recordHeaders.add(key, rawHeader);
-            }
-        }
-
         WasmRecord env = new WasmRecord();
         env.topic = record.topic();
-        env.key = keyConverter.fromConnectData(record.topic(), recordHeaders, record.keySchema(), record.key());
-        env.value = valueConverter.fromConnectData(record.topic(), recordHeaders, record.valueSchema(), record.value());
+        env.key = recordConverter.fromConnectKey(record);
+        env.value = recordConverter.fromConnectValue(record);
 
-        recordHeaders.forEach(h -> {
-            env.headers.put(h.key(), h.value());
-        });
+        if (record.headers() != null) {
+            // May not be needed but looks like the record headers may be required
+            // by key/val converters
+            for (Header header : record.headers()) {
+                env.headers.put(header.key(), recordConverter.fromConnectHeader(record, header));
+            }
+        }
 
         try {
             byte[] rawData = MAPPER.writeValueAsBytes(env);
@@ -473,11 +409,11 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
 
             w.headers.forEach((k, v) -> {
                 recordHeaders.add(k, v);
-                connectHeaders.add(k, headerConverter.toConnectHeader(w.topic, k, v));
+                connectHeaders.add(k, recordConverter.toConnectHeader(record, k, v));
             });
 
-            SchemaAndValue keyAndSchema = keyConverter.toConnectData(w.topic, recordHeaders, w.key);
-            SchemaAndValue valueAndSchema = valueConverter.toConnectData(w.topic, recordHeaders, w.value);
+            SchemaAndValue keyAndSchema = recordConverter.toConnectKey(record, w.key);
+            SchemaAndValue valueAndSchema = recordConverter.toConnectValue(record, w.value);
 
             TL.set(
                 record.newRecord(
