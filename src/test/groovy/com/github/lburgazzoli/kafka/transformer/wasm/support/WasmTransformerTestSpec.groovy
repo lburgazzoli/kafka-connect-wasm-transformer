@@ -1,16 +1,9 @@
 package com.github.lburgazzoli.kafka.transformer.wasm.support
 
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.connect.data.Schema
 import org.apache.kafka.connect.header.ConnectHeaders
 import org.apache.kafka.connect.header.Header
 import org.apache.kafka.connect.source.SourceRecord
-import org.testcontainers.redpanda.RedpandaContainer
 import spock.lang.Specification
 
 class WasmTransformerTestSpec extends Specification {
@@ -38,7 +31,11 @@ class WasmTransformerTestSpec extends Specification {
         Schema valueSchema
         Object value
         Long timestamp
-        Iterable< Header> headers
+        List<Header> headers
+
+        public SourceRecordBuilder() {
+            this.headers = new ArrayList<>()
+        }
 
         SourceRecordBuilder withSourcePartition(Map<String, ?> sourcePartition) {
             this.sourcePartition = sourcePartition
@@ -86,8 +83,15 @@ class WasmTransformerTestSpec extends Specification {
         }
 
         SourceRecordBuilder withHeaders(Iterable<Header> headers) {
-            this.headers = headers
+            this.headers.addAll(headers)
             return this
+        }
+
+        SourceRecordBuilder withHeader(String key, Schema schema, Object value) {
+            def h = new ConnectHeaders()
+            h.add(key, value, schema)
+
+            return withHeaders(h)
         }
 
         SourceRecord build() {
@@ -103,7 +107,7 @@ class WasmTransformerTestSpec extends Specification {
                     this.valueSchema,
                     this.value,
                     this.timestamp ?= 0,
-                    this.headers ?= new ConnectHeaders())
+                    this.headers)
         }
     }
 

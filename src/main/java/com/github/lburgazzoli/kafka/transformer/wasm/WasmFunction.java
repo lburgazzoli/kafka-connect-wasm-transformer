@@ -154,33 +154,35 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         try {
             TL.set(record);
 
-
-            int outAddr = -1;
-            int outSize = 0;
-
             //
             // Wasm execution is not thread safe, so we must put a
             // synchronization guard around the function execution
             //
             synchronized (lock) {
-                try {
-                    Value[] results = function.apply();
-                    long ptrAndSize = results[0].asLong();
+                Value[] results = function.apply();
 
-                    outAddr = (int) (ptrAndSize >> 32);
-                    outSize = (int) ptrAndSize;
+                if (results != null) {
+                    int outAddr = -1;
+                    int outSize = 0;
 
-                    // assume the max output is 31 bit, leverage the first bit for
-                    // error detection
-                    if (isError(outSize)) {
-                        int errSize = errSize(outSize);
-                        String errData = instance.memory().readString(outAddr, errSize);
+                    try {
+                        long ptrAndSize = results[0].asLong();
 
-                        throw new WasmFunctionException(this.functionName, errData);
-                    }
-                } finally {
-                    if (outAddr != -1) {
-                        dealloc.apply(Value.i32(outAddr), Value.i32(outSize));
+                        outAddr = (int) (ptrAndSize >> 32);
+                        outSize = (int) ptrAndSize;
+
+                        // assume the max output is 31 bit, leverage the first bit for
+                        // error detection
+                        if (isError(outSize)) {
+                            int errSize = errSize(outSize);
+                            String errData = instance.memory().readString(outAddr, errSize);
+
+                            throw new WasmFunctionException(this.functionName, errData);
+                        }
+                    } finally {
+                        if (outAddr != -1) {
+                            dealloc.apply(Value.i32(outAddr), Value.i32(outSize));
+                        }
                     }
                 }
             }
@@ -224,6 +226,25 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         return converter.toConnectData(record.topic(), recordHeaders, data);
     }
 
+    /**
+     * Write the give data to Wasm's linear memory.
+     *
+     * @param data the data to be written
+     * @return an i64 holding the address and size fo the written data
+     */
+    private Value write(byte[] data) {
+        int rawDataAddr = alloc.apply(Value.i32(data.length))[0].asInt();
+
+        instance.memory().write(rawDataAddr, data);
+
+        long ptrAndSize = rawDataAddr;
+        ptrAndSize = ptrAndSize << 32;
+        ptrAndSize = ptrAndSize | data.length;
+
+        return Value.i64(ptrAndSize);
+
+    }
+
     //
     // Functions
     //
@@ -242,9 +263,10 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         final Header header = TL.get().headers().lastWithName(headerNwe);
 
         byte[] rawData = this.headerConverter.fromConnectHeader(record.topic(), header.key(), header.schema(), header.value());
-        int rawDataAddr = alloc.apply(Value.i32(rawData.length))[0].asInt();
 
-        return new Value[] {Value.i64(rawDataAddr << 32 | rawData.length)};
+        return new Value[]{
+            write(rawData)
+        };
     }
 
     private Value[] setHeaderFn(Instance instance, Value... args) {
@@ -284,9 +306,10 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         }
 
         byte[] rawData = keyConverter.fromConnectData(topic, recordHeaders, record.keySchema(), record.key());
-        int rawDataAddr = alloc.apply(Value.i32(rawData.length))[0].asInt();
 
-        return new Value[] {Value.i64(rawDataAddr << 32 | rawData.length)};
+        return new Value[] {
+            write(rawData)
+        };
     }
 
     private Value[] setKeyFn(Instance instance, Value... args) {
@@ -330,12 +353,11 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
             }
         }
 
-        byte[] rawData = valueConverter.fromConnectData(topic, recordHeaders, record.keySchema(), record.value());
-        int rawDataAddr = alloc.apply(Value.i32(rawData.length))[0].asInt();
+        byte[] rawData = valueConverter.fromConnectData(topic, recordHeaders, record.valueSchema(), record.value());
 
-        instance.memory().write(rawDataAddr, rawData);
-
-        return new Value[] {Value.i64(rawDataAddr << 32 | rawData.length)};
+        return new Value[] {
+            write(rawData)
+        };
     }
 
     private Value[] setValueFn(Instance instance, Value... args) {
@@ -366,11 +388,11 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
 
     private Value[] getTopicFn(Instance instance, Value... args) {
         final R record = TL.get();
-
         byte[] rawData = record.topic().getBytes(StandardCharsets.UTF_8);
-        int rawDataAddr = alloc.apply(Value.i32(rawData.length))[0].asInt();
 
-        return new Value[] {Value.i64(rawDataAddr << 32 | rawData.length)};
+        return new Value[] {
+            write(rawData)
+        };
     }
 
     private Value[] setTopicFn(Instance instance, Value... args) {
@@ -424,9 +446,10 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
 
         try {
             byte[] rawData = MAPPER.writeValueAsBytes(env);
-            int rawDataAddr = alloc.apply(Value.i32(rawData.length))[0].asInt();
 
-            return new Value[]{Value.i64(rawDataAddr << 32 | rawData.length)};
+            return new Value[]{
+                write(rawData)
+            };
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
