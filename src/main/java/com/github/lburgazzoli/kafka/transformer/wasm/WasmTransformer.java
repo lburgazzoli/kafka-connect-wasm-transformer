@@ -3,8 +3,6 @@ package com.github.lburgazzoli.kafka.transformer.wasm;
 import java.io.File;
 import java.util.Map;
 
-import com.dylibso.chicory.runtime.Module;
-import com.dylibso.chicory.runtime.exceptions.WASMMachineException;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.utils.AppInfoParser;
@@ -17,6 +15,9 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.dylibso.chicory.runtime.Module;
+import com.dylibso.chicory.runtime.exceptions.WASMMachineException;
 
 public class WasmTransformer<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
     private static final Logger LOGGER = LoggerFactory.getLogger(WasmTransformer.class);
@@ -79,7 +80,6 @@ public class WasmTransformer<R extends ConnectRecord<R>> implements Transformati
         final Converter keyConverter;
         final Converter valueConverter;
         final HeaderConverter headerConverter;
-
 
         try {
             keyConverter = (Converter) config.getClass(KEY_CONVERTER).getDeclaredConstructor().newInstance();

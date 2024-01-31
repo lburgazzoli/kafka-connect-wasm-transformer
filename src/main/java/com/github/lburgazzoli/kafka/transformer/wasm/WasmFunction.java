@@ -5,16 +5,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
-import com.dylibso.chicory.runtime.ExportFunction;
-import com.dylibso.chicory.runtime.HostFunction;
-import com.dylibso.chicory.runtime.HostImports;
-import com.dylibso.chicory.runtime.Instance;
-import com.dylibso.chicory.runtime.Module;
-import com.dylibso.chicory.runtime.exceptions.WASMMachineException;
-import com.dylibso.chicory.wasm.types.Value;
-import com.dylibso.chicory.wasm.types.ValueType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.SchemaAndValue;
@@ -25,6 +15,17 @@ import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.HeaderConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.dylibso.chicory.runtime.ExportFunction;
+import com.dylibso.chicory.runtime.HostFunction;
+import com.dylibso.chicory.runtime.HostImports;
+import com.dylibso.chicory.runtime.Instance;
+import com.dylibso.chicory.runtime.Module;
+import com.dylibso.chicory.runtime.exceptions.WASMMachineException;
+import com.dylibso.chicory.wasm.types.Value;
+import com.dylibso.chicory.wasm.types.ValueType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 
 public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, Function<R, R> {
     private static final Logger LOGGER = LoggerFactory.getLogger(WasmFunction.class);
@@ -38,9 +39,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     private final Module module;
     private final String functionName;
 
-
     private final WasmRecordConverter<R> recordConverter;
-
 
     private final Instance instance;
     private final ExportFunction function;
@@ -66,72 +65,61 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
                 MODULE_NAME,
                 "get_header",
                 List.of(ValueType.I32, ValueType.I32),
-                List.of(ValueType.I64)
-            ),
+                List.of(ValueType.I64)),
             new HostFunction(
                 this::setHeaderFn,
                 MODULE_NAME,
                 "set_header",
                 List.of(ValueType.I32, ValueType.I32, ValueType.I32, ValueType.I32),
-                List.of()
-            ),
+                List.of()),
             new HostFunction(
                 this::getKeyFn,
                 MODULE_NAME,
                 "get_key",
                 List.of(),
-                List.of(ValueType.I64)
-            ),
+                List.of(ValueType.I64)),
             new HostFunction(
                 this::setKeyFn,
                 MODULE_NAME,
                 "set_key",
                 List.of(ValueType.I32, ValueType.I32),
-                List.of()
-            ),
+                List.of()),
             new HostFunction(
                 this::getValueFn,
                 MODULE_NAME,
                 "get_value",
                 List.of(),
-                List.of(ValueType.I64)
-            ),
+                List.of(ValueType.I64)),
             new HostFunction(
                 this::setValueFn,
                 MODULE_NAME,
                 "set_value",
                 List.of(ValueType.I32, ValueType.I32),
-                List.of()
-            ),
+                List.of()),
             new HostFunction(
                 this::getTopicFn,
                 MODULE_NAME,
                 "get_topic",
                 List.of(),
-                List.of(ValueType.I64)
-            ),
+                List.of(ValueType.I64)),
             new HostFunction(
                 this::setTopicFn,
                 MODULE_NAME,
                 "set_topic",
                 List.of(ValueType.I32, ValueType.I32),
-                List.of()
-            ),
+                List.of()),
             new HostFunction(
                 this::getRecordFn,
                 MODULE_NAME,
                 "get_record",
                 List.of(),
-                List.of(ValueType.I64)
-            ),
+                List.of(ValueType.I64)),
             new HostFunction(
                 this::setRecordFn,
                 MODULE_NAME,
                 "set_record",
                 List.of(ValueType.I32, ValueType.I32),
-                List.of()
-            )
-        );
+                List.of()));
 
         this.instance = this.module.instantiate(new HostImports(localFunctions.toArray(HostFunction[]::new)));
         this.function = this.instance.export(this.functionName);
@@ -200,8 +188,8 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     /**
      * Write the give data to Wasm's linear memory.
      *
-     * @param data the data to be written
-     * @return an i64 holding the address and size fo the written data
+     * @param  data the data to be written
+     * @return      an i64 holding the address and size fo the written data
      */
     private Value write(byte[] data) {
         int rawDataAddr = alloc.apply(Value.i32(data.length))[0].asInt();
@@ -232,10 +220,10 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
 
         final String headerName = instance.memory().readString(addr, size);
         final R record = TL.get();
-        final byte[] rawData = recordConverter.fromConnectHeader(record,headerName);
+        final byte[] rawData = recordConverter.fromConnectHeader(record, headerName);
 
-        return new Value[]{
-            write(rawData)
+        return new Value[] {
+                write(rawData)
         };
     }
 
@@ -265,7 +253,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         final byte[] rawData = recordConverter.fromConnectKey(record);
 
         return new Value[] {
-            write(rawData)
+                write(rawData)
         };
     }
 
@@ -284,9 +272,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
                 record.valueSchema(),
                 record.value(),
                 record.timestamp(),
-                record.headers()
-            )
-        );
+                record.headers()));
 
         return new Value[] {};
     }
@@ -300,7 +286,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         final byte[] rawData = recordConverter.fromConnectValue(record);
 
         return new Value[] {
-            write(rawData)
+                write(rawData)
         };
     }
 
@@ -319,9 +305,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
                 sv.schema(),
                 sv.value(),
                 record.timestamp(),
-                record.headers()
-            )
-        );
+                record.headers()));
 
         return new Value[] {};
     }
@@ -335,7 +319,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         byte[] rawData = record.topic().getBytes(StandardCharsets.UTF_8);
 
         return new Value[] {
-            write(rawData)
+                write(rawData)
         };
     }
 
@@ -353,9 +337,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
                 record.valueSchema(),
                 record.value(),
                 record.timestamp(),
-                record.headers()
-            )
-        );
+                record.headers()));
 
         return new Value[] {};
     }
@@ -383,8 +365,8 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         try {
             byte[] rawData = MAPPER.writeValueAsBytes(env);
 
-            return new Value[]{
-                write(rawData)
+            return new Value[] {
+                    write(rawData)
             };
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -424,9 +406,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
                     valueAndSchema.schema(),
                     valueAndSchema.value(),
                     record.timestamp(),
-                    connectHeaders
-                )
-            );
+                    connectHeaders));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
