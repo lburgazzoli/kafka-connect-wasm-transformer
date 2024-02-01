@@ -20,13 +20,13 @@
             <AppenderRef ref="console"/>
         </logger>
 
-        <logger name="org.apache.kafka.connect" level="INFO" additivity="false">
+        <logger name="org.apache.kafka.connect" level="DEBUG" additivity="false">
             <AppenderRef ref="console"/>
         </logger>
         <logger name="org.apache.kafka.connect.runtime.isolation" level="WARN" additivity="false">
             <AppenderRef ref="console"/>
         </logger>
-        <logger name="org.apache.kafka.connect.file" level="INFO" additivity="false">
+        <logger name="org.apache.kafka.connect.file" level="DEBUG" additivity="false">
             <AppenderRef ref="console"/>
         </logger>
 

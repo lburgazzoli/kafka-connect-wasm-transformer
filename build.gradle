@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.axionRelease)
     alias(libs.plugins.testLogger)
     alias(libs.plugins.testRetry)
+    alias(libs.plugins.shadow)
 
     id 'java-library'
     id 'groovy'
@@ -26,10 +27,9 @@ repositories {
 }
 
 dependencies {
-    api libs.slf4j
-    api libs.bundles.kafka
-    api libs.bundles.chicory
-
+    implementation libs.slf4j
+    implementation libs.bundles.kafka
+    implementation libs.bundles.chicory
     implementation libs.bundles.jackson
 
     testImplementation platform("org.apache.groovy:groovy-bom:${libs.versions.groovy.get()}")
@@ -63,6 +63,20 @@ test {
 testlogger {
     theme 'mocha-parallel'
     showStandardStreams true
+}
+
+// disable standard jar task so we can have a single ube jar as result
+jar.enabled = false
+
+shadowJar {
+    mergeServiceFiles()
+
+    dependencies {
+        // exclude dependencies provided in the kafka connect classpath
+        exclude dependency("org.apache.kafka:connect-api:.*")
+        exclude dependency("org.apache.kafka:kafka-clients:.*")
+        exclude dependency('org.slf4j:.*:.*')
+    }
 }
 
 tasks.register('allDeps', DependencyReportTask)
