@@ -12,6 +12,6 @@ path = "functions.rs"
 kafka-connect-wasm-sdk = { path = "../../main/rust", version = "=0.1.0" }
 
 [profile.release]
-opt-level = 0
-lto = "off"
+opt-level = "z"
+lto = true
 codegen-units = 1
