@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 path = "functions.rs"
 
 [dependencies]
-kafka-connect-wasm-sdk= { path = "../../main/rust", version = "=0.1.0" }
+kafka-connect-wasm-sdk = { path = "../../main/rust", version = "=0.1.0" }
 
 [profile.release]
 opt-level = 0
