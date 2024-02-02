@@ -3,9 +3,9 @@ package com.github.lburgazzoli.kafka.transformer.wasm;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
-import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.header.ConnectHeaders;
@@ -46,7 +46,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     private final ExportFunction alloc;
     private final ExportFunction dealloc;
 
-    private final ThreadLocal<R> TL = new ThreadLocal<>();
+    private final AtomicReference<R> ref;
 
     public WasmFunction(
         Module module,
@@ -55,73 +55,11 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         Converter valueConverter,
         HeaderConverter headerConverter) {
 
+        this.ref = new AtomicReference<>();
         this.recordConverter = new WasmRecordConverter<>(keyConverter, valueConverter, headerConverter);
         this.module = Objects.requireNonNull(module);
         this.functionName = Objects.requireNonNull(functionName);
-
-        List<HostFunction> localFunctions = List.of(
-            new HostFunction(
-                this::getHeaderFn,
-                MODULE_NAME,
-                "get_header",
-                List.of(ValueType.I32, ValueType.I32),
-                List.of(ValueType.I64)),
-            new HostFunction(
-                this::setHeaderFn,
-                MODULE_NAME,
-                "set_header",
-                List.of(ValueType.I32, ValueType.I32, ValueType.I32, ValueType.I32),
-                List.of()),
-            new HostFunction(
-                this::getKeyFn,
-                MODULE_NAME,
-                "get_key",
-                List.of(),
-                List.of(ValueType.I64)),
-            new HostFunction(
-                this::setKeyFn,
-                MODULE_NAME,
-                "set_key",
-                List.of(ValueType.I32, ValueType.I32),
-                List.of()),
-            new HostFunction(
-                this::getValueFn,
-                MODULE_NAME,
-                "get_value",
-                List.of(),
-                List.of(ValueType.I64)),
-            new HostFunction(
-                this::setValueFn,
-                MODULE_NAME,
-                "set_value",
-                List.of(ValueType.I32, ValueType.I32),
-                List.of()),
-            new HostFunction(
-                this::getTopicFn,
-                MODULE_NAME,
-                "get_topic",
-                List.of(),
-                List.of(ValueType.I64)),
-            new HostFunction(
-                this::setTopicFn,
-                MODULE_NAME,
-                "set_topic",
-                List.of(ValueType.I32, ValueType.I32),
-                List.of()),
-            new HostFunction(
-                this::getRecordFn,
-                MODULE_NAME,
-                "get_record",
-                List.of(),
-                List.of(ValueType.I64)),
-            new HostFunction(
-                this::setRecordFn,
-                MODULE_NAME,
-                "set_record",
-                List.of(ValueType.I32, ValueType.I32),
-                List.of()));
-
-        this.instance = this.module.instantiate(new HostImports(localFunctions.toArray(HostFunction[]::new)));
+        this.instance = this.module.instantiate(imports());
         this.function = this.instance.export(this.functionName);
         this.alloc = this.instance.export(FN_ALLOC);
         this.dealloc = this.instance.export(FN_DEALLOC);
@@ -130,10 +68,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     @Override
     public R apply(R record) {
         try {
-            // the transformation pipeline is executed by a single thread, so it is safe to invoke
-            // the Wasm function without any lock, however we use a ThreadLocal variable to store
-            // the record being processed just as a simple way to pass it to the various functions
-            TL.set(record);
+            ref.set(record);
 
             Value[] results = function.apply();
 
@@ -162,14 +97,14 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
                 }
             }
 
-            return TL.get();
+            return ref.get();
         } catch (WASMMachineException e) {
             LOGGER.warn("message: {}, stack {}", e.getMessage(), e.stackFrames());
             throw new RuntimeException(e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
-            TL.remove();
+            ref.set(null);
         }
     }
 
@@ -183,6 +118,73 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
 
     private static int errSize(int number) {
         return number & (~(1 << 31));
+    }
+
+    private HostImports imports() {
+        HostFunction[] functions = new HostFunction[] {
+                new HostFunction(
+                    this::getHeaderFn,
+                    MODULE_NAME,
+                    "get_header",
+                    List.of(ValueType.I32, ValueType.I32),
+                    List.of(ValueType.I64)),
+                new HostFunction(
+                    this::setHeaderFn,
+                    MODULE_NAME,
+                    "set_header",
+                    List.of(ValueType.I32, ValueType.I32, ValueType.I32, ValueType.I32),
+                    List.of()),
+                new HostFunction(
+                    this::getKeyFn,
+                    MODULE_NAME,
+                    "get_key",
+                    List.of(),
+                    List.of(ValueType.I64)),
+                new HostFunction(
+                    this::setKeyFn,
+                    MODULE_NAME,
+                    "set_key",
+                    List.of(ValueType.I32, ValueType.I32),
+                    List.of()),
+                new HostFunction(
+                    this::getValueFn,
+                    MODULE_NAME,
+                    "get_value",
+                    List.of(),
+                    List.of(ValueType.I64)),
+                new HostFunction(
+                    this::setValueFn,
+                    MODULE_NAME,
+                    "set_value",
+                    List.of(ValueType.I32, ValueType.I32),
+                    List.of()),
+                new HostFunction(
+                    this::getTopicFn,
+                    MODULE_NAME,
+                    "get_topic",
+                    List.of(),
+                    List.of(ValueType.I64)),
+                new HostFunction(
+                    this::setTopicFn,
+                    MODULE_NAME,
+                    "set_topic",
+                    List.of(ValueType.I32, ValueType.I32),
+                    List.of()),
+                new HostFunction(
+                    this::getRecordFn,
+                    MODULE_NAME,
+                    "get_record",
+                    List.of(),
+                    List.of(ValueType.I64)),
+                new HostFunction(
+                    this::setRecordFn,
+                    MODULE_NAME,
+                    "set_record",
+                    List.of(ValueType.I32, ValueType.I32),
+                    List.of())
+        };
+
+        return new HostImports(functions);
     }
 
     /**
@@ -219,7 +221,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         final int size = args[1].asInt();
 
         final String headerName = instance.memory().readString(addr, size);
-        final R record = TL.get();
+        final R record = this.ref.get();
         final byte[] rawData = recordConverter.fromConnectHeader(record, headerName);
 
         return new Value[] {
@@ -236,7 +238,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         final String headerName = instance.memory().readString(headerNameAddr, headerNameSize);
         final byte[] headerData = instance.memory().readBytes(headerDataAddr, headerDataSize);
 
-        final R record = TL.get();
+        final R record = this.ref.get();
         final SchemaAndValue sv = recordConverter.toConnectHeader(record, headerName, headerData);
 
         record.headers().add(headerName, sv);
@@ -249,7 +251,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     //
 
     private Value[] getKeyFn(Instance instance, Value... args) {
-        final R record = TL.get();
+        final R record = this.ref.get();
         final byte[] rawData = recordConverter.fromConnectKey(record);
 
         return new Value[] {
@@ -260,10 +262,10 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     private Value[] setKeyFn(Instance instance, Value... args) {
         final int addr = args[0].asInt();
         final int size = args[1].asInt();
-        final R record = TL.get();
+        final R record = this.ref.get();
         final SchemaAndValue sv = recordConverter.toConnectKey(record, instance.memory().readBytes(addr, size));
 
-        TL.set(
+        this.ref.set(
             record.newRecord(
                 record.topic(),
                 record.kafkaPartition(),
@@ -282,7 +284,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     //
 
     private Value[] getValueFn(Instance instance, Value... args) {
-        final R record = TL.get();
+        final R record = this.ref.get();
         final byte[] rawData = recordConverter.fromConnectValue(record);
 
         return new Value[] {
@@ -293,10 +295,10 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     private Value[] setValueFn(Instance instance, Value... args) {
         final int addr = args[0].asInt();
         final int size = args[1].asInt();
-        final R record = TL.get();
+        final R record = this.ref.get();
         final SchemaAndValue sv = recordConverter.toConnectValue(record, instance.memory().readBytes(addr, size));
 
-        TL.set(
+        this.ref.set(
             record.newRecord(
                 record.topic(),
                 record.kafkaPartition(),
@@ -315,7 +317,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     //
 
     private Value[] getTopicFn(Instance instance, Value... args) {
-        final R record = TL.get();
+        final R record = this.ref.get();
         byte[] rawData = record.topic().getBytes(StandardCharsets.UTF_8);
 
         return new Value[] {
@@ -326,9 +328,9 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     private Value[] setTopicFn(Instance instance, Value... args) {
         final int addr = args[0].asInt();
         final int size = args[1].asInt();
-        final R record = TL.get();
+        final R record = this.ref.get();
 
-        TL.set(
+        this.ref.set(
             record.newRecord(
                 instance.memory().readString(addr, size),
                 record.kafkaPartition(),
@@ -347,7 +349,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     //
 
     private Value[] getRecordFn(Instance instance, Value... args) {
-        final R record = TL.get();
+        final R record = this.ref.get();
 
         WasmRecord env = new WasmRecord();
         env.topic = record.topic();
@@ -376,7 +378,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     private Value[] setRecordFn(Instance instance, Value... args) {
         final int addr = args[0].asInt();
         final int size = args[1].asInt();
-        final R record = TL.get();
+        final R record = this.ref.get();
         final byte[] in = instance.memory().readBytes(addr, size);
 
         try {
@@ -386,18 +388,16 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
             // by key/val converters so let's do it even if I don't think the way
             // I'm doing it is 100% correct :)
 
-            RecordHeaders recordHeaders = new RecordHeaders();
             Headers connectHeaders = new ConnectHeaders();
 
             w.headers.forEach((k, v) -> {
-                recordHeaders.add(k, v);
                 connectHeaders.add(k, recordConverter.toConnectHeader(record, k, v));
             });
 
             SchemaAndValue keyAndSchema = recordConverter.toConnectKey(record, w.key);
             SchemaAndValue valueAndSchema = recordConverter.toConnectValue(record, w.value);
 
-            TL.set(
+            this.ref.set(
                 record.newRecord(
                     w.topic,
                     record.kafkaPartition(),
