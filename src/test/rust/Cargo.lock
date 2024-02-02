@@ -22,10 +22,7 @@ dependencies = [
 name = "functions"
 version = "0.1.0"
 dependencies = [
- "base64",
- "base64-serde",
- "serde",
- "serde_json",
+ "kafka-connect-wasm-sdk",
 ]
 
 [[package]]
@@ -33,6 +30,16 @@ name = "itoa"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1a46d1a171d865aa5f83f92695765caa047a9b4cbae2cbf37dbd613a793fd4c"
+
+[[package]]
+name = "kafka-connect-wasm-sdk"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "base64-serde",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "proc-macro2"

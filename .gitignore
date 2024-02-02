@@ -13,3 +13,4 @@ target
 .DS_Store
 tmp/
 build/
+bin/
