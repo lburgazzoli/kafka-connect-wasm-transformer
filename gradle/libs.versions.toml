@@ -9,7 +9,7 @@ awaitility = "4.2.1"
 groovy = "4.0.18"
 spock = "2.3-groovy-4.0"
 kafka = "3.7.0"
-chicory = "0.0.9"
+chicory = "0.0.10"
 
 versionsPlugin = "0.51.0"
 spotlessPlugin = "6.25.0"
