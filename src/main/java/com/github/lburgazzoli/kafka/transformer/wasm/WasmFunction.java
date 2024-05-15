@@ -59,7 +59,7 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
         this.recordConverter = new WasmRecordConverter<>(keyConverter, valueConverter, headerConverter);
         this.module = Objects.requireNonNull(module);
         this.functionName = Objects.requireNonNull(functionName);
-        this.instance = this.module.instantiate(imports());
+        this.instance = this.module.withHostImports(imports()).instantiate();
         this.function = this.instance.export(this.functionName);
         this.alloc = this.instance.export(FN_ALLOC);
         this.dealloc = this.instance.export(FN_DEALLOC);
