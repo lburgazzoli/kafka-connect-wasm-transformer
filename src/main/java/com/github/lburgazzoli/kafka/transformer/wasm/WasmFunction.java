@@ -1,6 +1,7 @@
 package com.github.lburgazzoli.kafka.transformer.wasm;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -36,30 +37,30 @@ public class WasmFunction<R extends ConnectRecord<R>> implements AutoCloseable, 
     public static final String FN_ALLOC = "alloc";
     public static final String FN_DEALLOC = "dealloc";
 
-    private final Module module;
-    private final String functionName;
-
     private final WasmRecordConverter<R> recordConverter;
-
+    private final String functionName;
     private final Instance instance;
     private final ExportFunction function;
     private final ExportFunction alloc;
     private final ExportFunction dealloc;
-
     private final AtomicReference<R> ref;
 
     public WasmFunction(
-        Module module,
+        String modulePath,
         String functionName,
         Converter keyConverter,
         Converter valueConverter,
         HeaderConverter headerConverter) {
 
+        Objects.requireNonNull(modulePath);
+
+        Module module = Module.builder(Path.of(modulePath)).withHostImports(imports()).build();
+
         this.ref = new AtomicReference<>();
         this.recordConverter = new WasmRecordConverter<>(keyConverter, valueConverter, headerConverter);
-        this.module = Objects.requireNonNull(module);
         this.functionName = Objects.requireNonNull(functionName);
-        this.instance = this.module.withHostImports(imports()).instantiate();
+
+        this.instance = module.instantiate();
         this.function = this.instance.export(this.functionName);
         this.alloc = this.instance.export(FN_ALLOC);
         this.dealloc = this.instance.export(FN_DEALLOC);

@@ -1,6 +1,5 @@
 package com.github.lburgazzoli.kafka.transformer.wasm;
 
-import java.io.File;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -16,7 +15,6 @@ import org.apache.kafka.connect.transforms.util.SimpleConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.dylibso.chicory.runtime.Module;
 import com.dylibso.chicory.runtime.exceptions.WASMMachineException;
 
 public class WasmTransformer<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
@@ -57,7 +55,6 @@ public class WasmTransformer<R extends ConnectRecord<R>> implements Transformati
             ConfigDef.Importance.MEDIUM,
             "The converter used to serialize/deserialize the Connect Record Header to/from binary data.");
 
-    private Module module;
     private WasmFunction<R> function;
 
     public WasmTransformer() {
@@ -99,8 +96,7 @@ public class WasmTransformer<R extends ConnectRecord<R>> implements Transformati
             throw new ConfigException(WASM_FUNCTION_NAME);
         }
 
-        this.module = Module.builder(new File(modulePath)).build();
-        this.function = new WasmFunction<>(this.module, functionName, keyConverter, valueConverter, headerConverter);
+        this.function = new WasmFunction<>(modulePath, functionName, keyConverter, valueConverter, headerConverter);
     }
 
     @Override
@@ -125,7 +121,6 @@ public class WasmTransformer<R extends ConnectRecord<R>> implements Transformati
             }
 
             this.function = null;
-            this.module = null;
         }
     }
 }
