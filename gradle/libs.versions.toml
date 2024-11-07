@@ -8,7 +8,7 @@ jackson = "2.18.1"
 awaitility = "4.2.2"
 groovy = "4.0.18"
 spock = "2.3-groovy-4.0"
-kafka = "3.8.1"
+kafka = "3.9.0"
 chicory = "0.0.12"
 
 versionsPlugin = "0.51.0"
