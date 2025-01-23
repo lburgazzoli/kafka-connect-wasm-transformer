@@ -11,7 +11,7 @@ spock = "2.3-groovy-4.0"
 kafka = "3.9.0"
 chicory = "0.0.12"
 
-versionsPlugin = "0.51.0"
+versionsPlugin = "0.52.0"
 spotlessPlugin = "7.0.2"
 testLoggerPlugin = "4.0.0"
 nexusPublishPlugin = "2.0.0"
